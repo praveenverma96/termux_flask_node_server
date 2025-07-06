@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Server</title>
+</head>
+<body>
+    <h2>Welcome to Flask server!</h2>
+
+    <h3>Submit Text (includes server + client metadata + clipboard)</h3>
+    <form id="textForm" action="/submit" method="POST">
+        <textarea id="metaText" name="text" rows="14" cols="100">{{ prefilled_text }}</textarea><br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <hr>
+
+    <h3>Upload a File (goes to uploads folder)</h3>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <button type="submit">Upload</button>
+    </form>
+
+    <h3>Share File to Download Folder (for others)</h3>
+    <form action="/share" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <button type="submit">Share</button>
+    </form>
+
+    <hr>
+
+    <h3>Files Available for Download:</h3>
+    <ul>
+        {% for file in files %}
+            <li>
+                {{ file }}
+                <form action="/downloads/{{ file }}" method="get" style="display:inline;">
+                    <button type="submit">Download</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <br>
+    <form action="/download_all" method="get">
+        <button type="submit">Download All as ZIP</button>
+    </form>
+
+    <script>
+        async function collectClientMetadata() {
+            let meta = "\n\n--- Client-Side Metadata ---\n";
+            try {
+                meta += "Screen Resolution: " + screen.width + "x" + screen.height + "\n";
+                meta += "Browser Language: " + navigator.language + "\n";
+                meta += "Time Zone: " + Intl.DateTimeFormat().resolvedOptions().timeZone + "\n";
+                meta += "Platform: " + navigator.platform + "\n";
+                meta += "User-Agent: " + navigator.userAgent + "\n";
+
+                // Clipboard
+                if (navigator.permissions && navigator.clipboard) {
+                    const permission = await navigator.permissions.query({ name: 'clipboard-read' });
+                    if (permission.state === 'granted' || permission.state === 'prompt') {
+                        const clipText = await navigator.clipboard.readText();
+                        meta += "\n--- Clipboard Text ---\n" + clipText + "\n";
+                    } else {
+                        meta += "\nClipboard access denied.\n";
+                    }
+                } else {
+                    meta += "\nClipboard access not supported.\n";
+                }
+            } catch (err) {
+                meta += "\nError collecting client metadata: " + err + "\n";
+            }
+            return meta;
+        }
+
+        document.getElementById('textForm').addEventListener('submit', async function (event) {
+            event.preventDefault(); // stop the form for now
+            const textarea = document.getElementById('metaText');
+            const clientMeta = await collectClientMetadata();
+            textarea.value += clientMeta;
+            this.submit(); // submit form manually
+        });
+    </script>
+</body>
+</html>
